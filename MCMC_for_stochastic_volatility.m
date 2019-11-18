@@ -167,15 +167,15 @@ xlabel('# of iterations');
 %% ht after burnin
 h_mcmc = exp(logh_mcmc);
 nburnin = 4000;
-lb = quantile(h_mcmc(:,nburnin:end),0.025,2);   % 2.5% quantile
-ub = quantile(h_mcmc(:,nburnin:end),0.975,2);   % 97.5% quantile
+lb = quantile(h_mcmc(:,nburnin+1:end),0.025,2);   % 2.5% quantile
+ub = quantile(h_mcmc(:,nburnin+1:end),0.975,2);   % 97.5% quantile
 patch_x = [1:length(t), length(t):-1:1];
 patch_y = [lb;flip(ub)];
-figure('position',[355   320   800   200]);
+figure('position',[355   320   800   300]);
 hold on; box on;
-plot(1:length(t),V,'linewidth',2)
-plot(1:length(t),mean(h_mcmc(:,nburnin:end),2),'linewidth',2)
-patch(patch_x,patch_y,'r','EdgeColor','none','FaceAlpha',0.2);
+plot(1:length(t),V,'linewidth',1)
+plot(1:length(t),mean(h_mcmc(:,nburnin+1:end),2),'linewidth',1)
+patch(patch_x,patch_y,'m','EdgeColor','none','FaceAlpha',0.1);
 legend({'GARCH','SV','95% interquantile'},'Location','best');
 ylims = ylim;
 ylabel('Stochastic volatility');
@@ -184,11 +184,41 @@ idx( month(t(idx-1)) == 1) = [];
 set(gca,'xtick',idx);
 set(gca,'XTickLabel',year(t(idx)));
 set(gca,'xlim',[1,length(t)]);
-set(gca,'ylim',[0,ylims(2)]);
+set(gca,'ylim',[0,3]);
 
 %%  distributions of parameters
-param_mcmc = [beta_mcmc(nburnin:end),alpha_mcmc(nburnin:end,:),Sigmav_mcmc(nburnin:end)];
-array2table([mean(param_mcmc); std(param_mcmc)],'VariableNames',{'beta','alpha1','alpha2','sigmav2'},'RowNames',{'mean','std'})
+param_mcmc = [beta_mcmc(nburnin+1:end),alpha_mcmc(nburnin+1:end,:),Sigmav_mcmc(nburnin+1:end)];
+E_param = mean(param_mcmc);
+V_param = var(param_mcmc);
+fprintf('mean and std of parameters are\n');
+array2table([E_param; sqrt(V_param)],'VariableNames',{'beta','alpha1','alpha2','sigmav2'},'RowNames',{'Mean','SE'})
+
+% --- autocorrelation of parameters
+corr_lags = 1000;
+figure
+title_str = {'\beta','\alpha_1','\alpha_2','\sigma_v^2'};
+for ii=1:4
+    subplot(2,2,ii)
+    [acf,acf_lags,acf_bounds] = autocorr(param_mcmc(:,ii),corr_lags);
+    plot(acf_lags,acf);%,'Marker','none');
+    hold on; box on;
+    plot(acf_lags,repmat(acf_bounds',length(acf),1),'r');
+    set(gca,'TickLength',[0.04,0.04]);
+    set(gca,'YMinorTick','on','XMinorTick','on');
+    ylabel('ACF');
+    xlabel('Lag');
+    title(title_str{ii})
+end
+
+% --- MCMC standard error by effective sample size
+[ESS,Sigma] = multiESS(param_mcmc);    % book assume no correlation between thetas 
+ESS = round(ESS);
+% MCMCSE = sqrt(diag(cov(param_mcmc))'/ESS);    % useing covariance of mcmc
+MCMCSE = sqrt(diag(Sigma)'/ESS);    % useing covariance from mutliESS
+fprintf('Effective sample size is %d\n',ESS);
+fprintf('   Approximated MCMC standard errors are [%f,%f,%f,%f]\n',MCMCSE);
+
+% --- plot
 figure
 [S,AX,BigAx,H,HAx] = plotmatrix(param_mcmc);
 set(AX,'xminortick','on','yminortick','on','ticklength',[0.04,0.04]);
