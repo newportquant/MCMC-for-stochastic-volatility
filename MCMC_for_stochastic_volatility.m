@@ -79,7 +79,7 @@ alpha0 = [0,0.2];   % mean
 Sigma_alpha0 = diag([0.4,0.4]);   % covariance
 % - for sigma^2_v
 nu0 = 1;
-Sigmav0 = 0.1;
+Sigmav0 = 0.01;
 
 % --- initial values using GARCH(1,1) model, and least square fit of log(ht0)
 betai = EstMdl.Constant;
@@ -138,7 +138,7 @@ for ii=1:nmcmc
     % Alternative way to get SSR by OLS
     %      alpha_ols = inv(zt'*zt)*(zt'*loghi(2:end));             % coefficent by OLS
     %      SSR = sum((loghi(2:end)-zt*alpha_ols).^2);            % SSR of OLS
-    Sigmavi = 1/random('Gamma',(nu0+n-1)/2,2/(nu0*Sigmav0^2+SSR));
+    Sigmavi = 1/random('Gamma',(nu0+n-1)/2,2/(nu0*Sigmav0+SSR));
     
     % collect result
     beta_mcmc(ii) = betai;
